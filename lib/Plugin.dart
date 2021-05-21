@@ -146,7 +146,7 @@
 //             "minWidth":
 //                 '1280', // Provide your own width, height and frame rate here
 //             "minHeight": '720',
-//             "minFrameRate": '60',
+//             "minFrameRate": '30',
 //           },
 //           "facingMode": "user",
 //           "optional": [],
@@ -854,32 +854,39 @@ class Plugin {
         }
       };
     }
+    debugPrint("Media Constraints: " + mediaConstraints.toString());
     if (_webRTCHandle != null) {
+      debugPrint('create local stream');
       _webRTCHandle.localStream =
       await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      debugPrint('getUserMedia done');
       _webRTCHandle.peerConnection.addStream(_webRTCHandle.localStream);
+      debugPrint('create local stream done');
       return _webRTCHandle.localStream;
     } else {
-      print("error webrtchandle cant be null");
+      debugPrint("error webrtchandle cant be null");
       return null;
     }
   }
 
   /// a utility method which can be used to switch camera of user device if it has more than one camera
   Future<bool> switchCamera() async {
+    debugPrint("switchCamera");
+
     if (_webRTCHandle.localStream != null) {
       final videoTrack = _webRTCHandle.localStream
           .getVideoTracks()
           .firstWhere((track) => track.kind == "video");
+      debugPrint("await Helper.switchCamera");
       return await Helper.switchCamera(videoTrack);
     } else {
+      debugPrint("Media devices and stream not");
       throw "Media devices and stream not initialized,try calling initializeMediaDevices() ";
     }
   }
 
   _handleSendResponse(json) {
-    print('handleSendResponse');
-    print(json);
+    debugPrint('handleSendResponse: ' + json.toString());
     if (json["janus"] == "event") {
       var jsep;
       // We got a success, must have been a synchronous transaction
@@ -937,6 +944,7 @@ class Plugin {
       "body": message,
       "transaction": transaction
     };
+    debugPrint('send: ' + message.toString());
     if (token != null) request["token"] = token;
     if (apiSecret != null) request["apisecret"] = apiSecret;
     if (jsep != null) {

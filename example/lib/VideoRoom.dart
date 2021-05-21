@@ -38,21 +38,27 @@ class _VideoRoomState extends State<VideoRoom> {
   }
 
   _newRemoteFeed(JanusClient j, feed) async {
-    print('remote plugin attached');
+    debugPrint('remote plugin attached');
     j.attach(Plugin(
         plugin: 'janus.plugin.videoroom',
         onMessage: (msg, jsep) async {
+          debugPrint('onMessage: ' + msg.toString());
           if (jsep != null) {
             await subscriberHandle.handleRemoteJsep(jsep);
             var body = {"request": "start", "room": 1234};
+
+            debugPrint('handleRemoteJsep done');
 
             await subscriberHandle.send(
               message: body,
               jsep: await subscriberHandle.createAnswer(),
             );
+            debugPrint('subscriberHandle done');
           }
         },
         onSuccess: (plugin) {
+          debugPrint('onSuccess');
+
           setState(() {
             subscriberHandle = plugin;
           });
@@ -63,10 +69,12 @@ class _VideoRoomState extends State<VideoRoom> {
             "feed": feed,
 //            "private_id": 12535
           };
+          debugPrint('subscriberHandle.send register');
           subscriberHandle.send(message: register);
+          debugPrint('subscriberHandle.send register done');
         },
         onRemoteStream: (stream) {
-          print('got remote stream');
+          debugPrint('got remote stream: ' + stream.toString());
           setState(() {
             remoteStream = stream;
             _remoteRenderer.srcObject = remoteStream;
@@ -78,35 +86,30 @@ class _VideoRoomState extends State<VideoRoom> {
     setState(() {
       j = JanusClient(iceServers: [
         RTCIceServer(
-            url: "stun:40.85.216.95:3478",
-            username: "onemandev",
-            credential: "SecureIt"),
-        RTCIceServer(
-            url: "turn:40.85.216.95:3478",
-            username: "onemandev",
-            credential: "SecureIt")
+            url: "stun:stun1.l.google.com:19302",
+            username: "",
+            credential: ""),
       ], server: [
-        'https://janus.conf.meetecho.com/janus',
-        'https://janus.onemandev.tech/janus',
-        // 'wss://janus.onemandev.tech/janus/websocket',
-        // 'https://janus.onemandev.tech/janus',
-      ], withCredentials: true, apiSecret: "SecureIt");
+      	 'http://gophor.me:8088/janus',
+      ], withCredentials: false);
       j.connect(onSuccess: (sessionId) async {
-        debugPrint('voilla! connection established with session id as' +
+        debugPrint('voila! connection established with session id as' +
             sessionId.toString());
         Map<String, dynamic> configuration = {
           "iceServers": j.iceServers.map((e) => e.toMap()).toList()
         };
 
+        debugPrint('Post ICE!');
+
         j.attach(Plugin(
             plugin: 'janus.plugin.videoroom',
             onMessage: (msg, jsep) async {
-              print('publisheronmsg');
+              debugPrint('publisheronmsg');
               if (msg["publishers"] != null) {
                 var list = msg["publishers"];
-                print('got publihers');
-                print(list);
+                debugPrint('got publishers: ' + list.toString());
                 _newRemoteFeed(j, list[0]["id"]);
+                debugPrint('_newRemoteFeed');
               }
 
               if (jsep != null) {
@@ -114,10 +117,13 @@ class _VideoRoomState extends State<VideoRoom> {
               }
             },
             onSuccess: (plugin) async {
+              debugPrint('[2] onSuccess');
               setState(() {
                 pluginHandle = plugin;
               });
+              debugPrint('await initializeMediaDevices');
               MediaStream stream = await plugin.initializeMediaDevices();
+              debugPrint('await initializeMediaDevices done');
               setState(() {
                 myStream = stream;
               });
@@ -128,20 +134,25 @@ class _VideoRoomState extends State<VideoRoom> {
                 "request": "join",
                 "room": 1234,
                 "ptype": "publisher",
-                "display": 'shivansh'
+                "display": 'dartapp'
               };
+              debugPrint('await register');
               await plugin.send(message: register);
+              debugPrint('await register done');
               var publish = {
                 "request": "configure",
                 "audio": true,
                 "video": true,
                 "bitrate": 2000000
               };
+              debugPrint('await createOffer');
               RTCSessionDescription offer = await plugin.createOffer();
+              debugPrint('await createOffer done');
               await plugin.send(message: publish, jsep: offer);
+              debugPrint('await publish done');
             }));
       }, onError: (e) {
-        debugPrint('some error occured');
+        debugPrint('some error occurred');
       });
     });
   }

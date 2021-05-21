@@ -104,7 +104,6 @@ class JanusClient {
       this._connected = false;
       // _keepAliveTimer.cancel();
       debugPrint(e.toString());
-      print(e.toString());
       this._onError(e);
       return Future.value(e);
     }
@@ -153,9 +152,7 @@ class JanusClient {
     var rootUrl = url;
     // if (!url.endsWith("/janus")) rootUrl = url + '/janus';
     _currentJanusUri = rootUrl;
-    debugPrint('should print ');
-    debugPrint(rootUrl);
-    debugPrint(_currentJanusUri);
+    debugPrint('rootUrl: ' + rootUrl.toString() + ' currentJanusUri: ' + _currentJanusUri.toString());
     try {
       var response = await _postRestClient({
         "janus": "create",
@@ -163,7 +160,7 @@ class JanusClient {
         ..._apiMap,
         ..._tokenMap
       });
-      print("response: " + response.toString());
+      debugPrint("response: " + response.toString());
       if (response["janus"] == "success") {
         _sessionId = response["data"]["id"];
 
@@ -213,8 +210,7 @@ class JanusClient {
           await _attemptWebSocket(item);
           if (isConnected) break;
         } else {
-          debugPrint('trying http/https interface');
-          debugPrint(item);
+          debugPrint('trying http/https interface: ' + item.toString());
           await _attemptRest(item);
           if (isConnected) break;
         }
@@ -377,8 +373,7 @@ class JanusClient {
       } else {
         //posting using rest mechanism
         var data = await _postRestClient(request, handleId: plugin.handleId);
-        print("trickle sent");
-        print(data);
+        debugPrint("trickle sent: " + data.toString());
       }
     };
 
@@ -389,17 +384,17 @@ class JanusClient {
       var opaqueId = plugin.opaqueId;
       if (plugin.opaqueId != null) request["opaque_id"] = opaqueId;
       _webSocketSink.add(stringify(request));
-      print('error here');
+      debugPrint('error here');
       _transactions[transaction] = (data) {
         if (data["janus"] != "success") {
           plugin.onError(
               "Ooops: " + data["error"].code + " " + data["error"]["reason"]);
           return null;
         }
-        print('attaching plugin success');
-        print(data);
+        debugPrint('attaching plugin success');
+        debugPrint(data.toString());
         int handleId = data["data"]["id"];
-        debugPrint("Created handle: " + handleId.toString());
+        debugPrint("Created handle[1]: " + handleId.toString());
 
         /// attaching websocket sink and stream on plugin handle
         plugin.webSocketStream = _webSocketStream;
@@ -412,11 +407,11 @@ class JanusClient {
         }
       };
       _webSocketStream.listen((event) {
-        print('outer event');
+        debugPrint('outer event');
         print(event);
         if (parse(event)["transaction"] == transaction) {
-          print('got event');
-          print(event);
+          debugPrint('got event');
+          debugPrint(event.toString());
           _transactions[transaction](parse(event));
         }
       });
@@ -440,15 +435,19 @@ class JanusClient {
       }
       int handleId = data["data"]["id"];
       plugin.handleId = handleId;
-      debugPrint("Created handle: " + handleId.toString());
+      debugPrint("Created handle[2]: " + handleId.toString());
 
       //attaching event handler using http polling
       _eventHandler(plugin);
+      debugPrint("Event handler done");
       //adding plugin handle to plugin handles map
       _pluginHandles[handleId] = plugin;
+      debugPrint("Plugin handles done");
       //if not provided then don't attempt callback
       if (plugin.onSuccess != null) {
+        debugPrint("onSuccess start");
         plugin.onSuccess(plugin);
+        debugPrint("onSuccess done");
       }
     }
   }
@@ -459,7 +458,7 @@ class JanusClient {
 
   _eventHandler(Plugin plugin) async {
     if (_sessionId == null) return;
-    debugPrint('Long poll...');
+    debugPrint('Long poll start');
     if (!isConnected) {
       debugPrint("Is the server down? (connected=false)");
       return;
@@ -474,17 +473,20 @@ class JanusClient {
         longpoll = longpoll + "&maxev=" + maxEvent.toString();
       if (token != null) longpoll = longpoll + "&token=" + token;
       if (apiSecret != null) longpoll = longpoll + "&apisecret=" + apiSecret;
-      print(longpoll);
-      print("polling active");
-      var json = parse((await http.get(Uri.parse(longpoll))).body);
+      debugPrint("Longpoll: " + longpoll.toString());
+      var result = await http.get(Uri.parse(longpoll));
+      debugPrint("Result: " + result.toString());
+
+      var json = parse(result.body);
+      debugPrint("Json: " + json.toString());
+
       (json as List<dynamic>).forEach((element) {
         _handleEvent(plugin, element);
       });
       _pollingRetries = 0;
       _eventHandler(plugin);
     } on HttpException catch (e) {
-      //   print('bloody exception');
-      //   print(e);
+      debugPrint('bloody exception: ' + e.toString());
       _pollingRetries++;
       if (_pollingRetries > 2) {
         // Did we just lose the server? :-(
@@ -493,7 +495,7 @@ class JanusClient {
         return;
       }
     } catch (e) {
-      print("fatal Exception");
+      debugPrint("fatal Exception: " + e.toString());
       return;
     }
   }
