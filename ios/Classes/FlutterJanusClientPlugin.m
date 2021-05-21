@@ -1,6 +1,6 @@
 #import "FlutterJanusClientPlugin.h"
-#if __has_include(<flutter_janus_client/flutter_janus_client-Swift.h>)
-#import <flutter_janus_client/flutter_janus_client-Swift.h>
+#if __has_include(<janus_client/janus_client-Swift.h>)
+#import <janus_client/janus_client-Swift.h>
 #else
 // Support project import fallback if the generated compatibility header
 // is not copied when this plugin is created as a library.
