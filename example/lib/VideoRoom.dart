@@ -45,7 +45,11 @@ class _VideoRoomState extends State<VideoRoom> {
           debugPrint('onMessage: ' + msg.toString());
           if (jsep != null) {
             await subscriberHandle.handleRemoteJsep(jsep);
-            var body = {"request": "start", "room": 1234};
+            var body = {
+              "request": "start",
+              "room": 1234,
+              "display": 'dartapp'
+            };
 
             debugPrint('handleRemoteJsep done');
 
@@ -67,6 +71,7 @@ class _VideoRoomState extends State<VideoRoom> {
             "room": 1234,
             "ptype": "subscriber",
             "feed": feed,
+            "display": 'dartapp'
 //            "private_id": 12535
           };
           debugPrint('subscriberHandle.send register');
@@ -116,6 +121,12 @@ class _VideoRoomState extends State<VideoRoom> {
                 pluginHandle.handleRemoteJsep(jsep);
               }
             },
+            onData: (d) {
+              debugPrint('initPlatformState::msg from datachannel: ' + d.text.toString());
+            },
+            onDataOpen: (d) async {
+              debugPrint('initPlatformState::data state changed: ' + d.toString());
+            },
             onSuccess: (plugin) async {
               debugPrint('[2] onSuccess');
               setState(() {
@@ -130,6 +141,12 @@ class _VideoRoomState extends State<VideoRoom> {
               setState(() {
                 _localRenderer.srcObject = myStream;
               });
+
+              // Needs to be up here for the datachannel to get set up properly
+              debugPrint('initPlatformState::initDataChannel');
+              await plugin.initDataChannel();
+              debugPrint('initPlatformState::initDataChannel done');
+
               var register = {
                 "request": "join",
                 "room": 1234,
@@ -143,13 +160,16 @@ class _VideoRoomState extends State<VideoRoom> {
                 "request": "configure",
                 "audio": true,
                 "video": true,
-                "bitrate": 2000000
+                "data": true,
+                "bitrate": 2000000,
+                "display": 'dartapp'
               };
               debugPrint('await createOffer');
               RTCSessionDescription offer = await plugin.createOffer();
               debugPrint('await createOffer done');
               await plugin.send(message: publish, jsep: offer);
               debugPrint('await publish done');
+
             }));
       }, onError: (e) {
         debugPrint('some error occurred');
@@ -170,7 +190,6 @@ class _VideoRoomState extends State<VideoRoom> {
               onPressed: () async {
                 await this.initRenderers();
                 await this.initPlatformState();
-//                  -_localRenderer.
               }),
           IconButton(
               icon: Icon(
@@ -199,8 +218,28 @@ class _VideoRoomState extends State<VideoRoom> {
                 if (pluginHandle != null) {
                   pluginHandle.switchCamera();
                 }
-              })
-        ],
+              }),
+          IconButton(
+              icon: Icon(
+                Icons.arrow_left_rounded,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (pluginHandle != null) {
+                  pluginHandle.sendData(message: stringify("Left"));
+                }
+              }),
+          IconButton(
+              icon: Icon(
+                Icons.arrow_right_rounded,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (pluginHandle != null) {
+                  pluginHandle.sendData(message: stringify("Right"));
+                }
+              }),
+          ],
         title: const Text('janus_client'),
       ),
       body: Stack(children: [

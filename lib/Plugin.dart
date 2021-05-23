@@ -1104,8 +1104,11 @@ class Plugin {
   }
 
   Future<void> initDataChannel({RTCDataChannelInit rtcDataChannelInit}) async {
+    debugPrint("Plugin.dart:initDataChannel");
     if (_webRTCHandle.peerConnection != null) {
+      debugPrint("Plugin.dart:initDataChannel pc != null");
       if (rtcDataChannelInit == null) {
+        debugPrint("Plugin.dart:initDataChannel:rtcDataChannelInit rtcDataChannelInit == null");
         rtcDataChannelInit = RTCDataChannelInit();
         rtcDataChannelInit.ordered = true;
         rtcDataChannelInit.protocol = 'janus-protocol';
@@ -1113,13 +1116,17 @@ class Plugin {
       webRTCHandle.dataChannel[_context.dataChannelDefaultLabel] =
       await webRTCHandle.peerConnection.createDataChannel(
           _context.dataChannelDefaultLabel, rtcDataChannelInit);
+          debugPrint("Plugin.dart:initDataChannel:rtcDataChannelInit createDataChannel done");
       if (webRTCHandle.dataChannel[_context.dataChannelDefaultLabel] != null) {
+        debugPrint("Plugin.dart:initDataChannel:rtcDataChannelInit webRTCHandle.dataChannel[_context.dataChannelDefaultLabel] != null");
         webRTCHandle.dataChannel[_context.dataChannelDefaultLabel]
             .onDataChannelState = (state) {
+          debugPrint("Plugin.dart:initDataChannel:rtcDataChannelInit onDataChannelState = (state)");
           onDataOpen(state);
         };
         webRTCHandle.dataChannel[_context.dataChannelDefaultLabel].onMessage =
             (RTCDataChannelMessage message) {
+          debugPrint("Plugin.dart:initDataChannel:rtcDataChannelInit RTCDataChannelMessage message");
           onData(message);
         };
       }
