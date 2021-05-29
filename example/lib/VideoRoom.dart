@@ -3,6 +3,8 @@ import 'package:janus_client/janus_client.dart';
 import 'package:janus_client/utils.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:janus_client/Plugin.dart';
+// import 'package:sensors/sensors.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import 'dart:async';
 
@@ -20,6 +22,20 @@ class _VideoRoomState extends State<VideoRoom> {
   MediaStream remoteStream;
   MediaStream myStream;
 
+  List<double> _prevAccelerometerValues;
+  List<double> _accelerometerValues;
+  List<double> _userAccelerometerValues;
+  List<double> _gyroscopeValues;
+  final _streamSubscriptions = <StreamSubscription<dynamic>>[];
+
+  @override
+  void dispose() {
+    super.dispose();
+    for (final subscription in _streamSubscriptions) {
+      subscription.cancel();
+    }
+  }
+
   @override
   void didChangeDependencies() async {
     // TODO: implement didChangeDependencies
@@ -30,6 +46,37 @@ class _VideoRoomState extends State<VideoRoom> {
   void initState() {
     super.initState();
     initRenderers();
+
+    _prevAccelerometerValues = <double>[0,0,0];
+    _accelerometerValues = <double>[0,0,0];
+
+    _streamSubscriptions.add(
+      accelerometerEvents.listen(
+        (AccelerometerEvent event) {
+          setState(() {
+            _accelerometerValues = <double>[event.x, event.y, event.z];
+          });
+        },
+      ),
+    );
+    _streamSubscriptions.add(
+      gyroscopeEvents.listen(
+        (GyroscopeEvent event) {
+          setState(() {
+            _gyroscopeValues = <double>[event.x, event.y, event.z];
+          });
+        },
+      ),
+    );
+    _streamSubscriptions.add(
+      userAccelerometerEvents.listen(
+        (UserAccelerometerEvent event) {
+          setState(() {
+            _userAccelerometerValues = <double>[event.x, event.y, event.z];
+          });
+        },
+      ),
+    );
   }
 
   initRenderers() async {
@@ -177,10 +224,9 @@ class _VideoRoomState extends State<VideoRoom> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+  Widget getAppBar() {
+    return
+      AppBar(
         actions: [
           IconButton(
               icon: Icon(
@@ -240,25 +286,103 @@ class _VideoRoomState extends State<VideoRoom> {
                 }
               }),
           ],
-        title: const Text('janus_client'),
-      ),
-      body: Stack(children: [
-        Positioned.fill(
-          child: RTCVideoView(
-            _remoteRenderer,
-          ),
+        title: const Text(''),
+      );
+  }
+
+  Widget getVideoWidget() {
+    // return Positioned.fill(
+    //   child: RTCVideoView(
+    //     _remoteRenderer,
+    //   ),
+    // );
+    return RTCVideoView(
+         _remoteRenderer,
+       );
+  }
+
+  Widget getVideoStackWidget(accelerometer) {
+    return
+      Container (
+        alignment: Alignment.center,
+        child: AspectRatio (
+          aspectRatio: 16 / 9,
+          child: Stack(
+            children: <Widget>[
+              Container(
+                  decoration: new BoxDecoration(color: Colors.white),
+                  alignment: Alignment.center,
+                  child: getVideoWidget()
+                ), // Container
+              Align(
+                alignment: Alignment.centerRight,
+                child: Icon(Icons.arrow_right_rounded, color: Colors.black, size: 40.0),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Icon(Icons.arrow_left_rounded, color: Colors.black, size: 40.0),
+              ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: Icon(Icons.arrow_drop_up, color: Colors.black, size: 40.0),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Icon(Icons.arrow_drop_down, color: Colors.black, size: 40.0),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: Text('$accelerometer')
+              ), // Align
+            ],
+          ), // Stack
+        ), // AspectRatio
+      ); // Container
+  }
+
+  Widget getBody(accelerometer) {
+    return
+      Theme(
+        data: ThemeData(
+          brightness: Brightness.light,
+          primarySwatch: Colors.indigo,
+          platform: Theme.of(context).platform,
         ),
-        Align(
-          child: Container(
-            child: RTCVideoView(
-              _localRenderer,
-            ),
-            height: 200,
-            width: 200,
-          ),
-          alignment: Alignment.bottomRight,
-        )
-      ]),
-    );
+        child: Scaffold(
+          body:
+            getVideoStackWidget(accelerometer),
+        ) // Scaffold within Theme
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    final accelerometer =
+        _accelerometerValues?.map((double v) => v.toStringAsFixed(1)).toList();
+    final gyroscope =
+        _gyroscopeValues?.map((double v) => v.toStringAsFixed(1)).toList();
+    final userAccelerometer = _userAccelerometerValues
+        ?.map((double v) => v.toStringAsFixed(1))
+        .toList();
+
+    List<double> delta = <double>[0,0,0];
+
+    delta[0] = _accelerometerValues[0] - _prevAccelerometerValues[0];
+    delta[1] = _accelerometerValues[1] - _prevAccelerometerValues[1];
+    delta[2] = _accelerometerValues[2] - _prevAccelerometerValues[2];
+
+    final deltaStr =
+      delta?.map((double v) => v.toStringAsFixed(1)).toList();
+
+    _prevAccelerometerValues = _accelerometerValues;
+
+    final aStr = _accelerometerValues[0].toStringAsFixed(1);
+
+    return
+      Scaffold (
+        appBar: getAppBar(),
+        body:  getBody(aStr),
+      ); // Main Scaffold
   }
 }
